@@ -188,7 +188,7 @@ void AMissile::Homing(float DeltaTime)
 	else {
 		// no: target is in front of the missile
 		// limit turnangle to max turnspeed
-		AngleToTarget = FMath::Min(FMath::RadiansToDegrees(Dot) * DeltaTime, Turnspeed * DeltaTime);
+		AngleToTarget = FMath::Min(FMath::RadiansToDegrees(Dot), Turnspeed * DeltaTime);
 	}
 
 	// calculate the vector that is orthogonal to direction to target and missile forward vector
