@@ -8,7 +8,7 @@
 // Sets default values
 AMissile::AMissile()
 {
-	bReplicates = true;                                    // Set the missile to be replicated	
+	bReplicates = false/*temporarily*/;                                    // Set the missile to be replicated	
 	PrimaryActorTick.bCanEverTick = true;                  // enable Tick
 
 }
@@ -179,17 +179,11 @@ void AMissile::Homing(float DeltaTime)
 	DirectionToTarget.Normalize();
 	Dot = FVector::DotProduct(DirectionToTarget, GetActorForwardVector());
 
-	// check if the dotproduct is negative
-	if (Dot < 0.0f) {
-	//	// yes: target is behind the missile
-	//	// set turnangle to max turnspeed
-		AngleToTarget = Turnspeed * DeltaTime;
-	}
-	else {
-		// no: target is in front of the missile
-		// limit turnangle to max turnspeed
-		AngleToTarget = FMath::Min(FMath::RadiansToDegrees(Dot), Turnspeed * DeltaTime);
-	}
+	// check if the dotproduct is negative and add PI if it is
+	Dot = (Dot < 0.0f) ? Dot + PI : Dot;
+	
+	AngleToTarget = FMath::Min(FMath::RadiansToDegrees(Dot), Turnspeed * DeltaTime);
+	
 
 	// calculate the vector that is orthogonal to direction to target and missile forward vector
 	// will be used to rotate the missile towards the target
