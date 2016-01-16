@@ -180,13 +180,13 @@ void AMissile::Homing(float DeltaTime)
 	Dot = FVector::DotProduct(DirectionToTarget, GetActorForwardVector());
 
 	// the angle between targetvector and actor forwardvector
-	AngleToTarget = (Dot < 0.0f) ? (FMath::RadiansToDegrees(FMath::Abs(Dot)) + 90.0f) : FMath::RadiansToDegrees(Dot);
+	AngleToTarget = (Dot < 0.0f) ? (FMath::Acos(FMath::Abs(Dot)) + 90.0f) : FMath::Acos(Dot);
 
 	// Clamp Turning to max turnrate
-	AngleToTarget = FMath::Min(0.5f * AngleToTarget, Turnspeed * DeltaTime);
+	AngleToTarget = FMath::Min(AngleToTarget / DeltaTime, Turnspeed * DeltaTime);
 
 	// debug message
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(Dot));
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AngleToTarget));
 
 	// calculate the vector that is orthogonal to direction to target and missile forward vector
 	// will be used to rotate the missile towards the target
