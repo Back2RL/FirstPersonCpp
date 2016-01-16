@@ -131,7 +131,7 @@ private:
 	float MaxLifeTime;
 	float Lifespan;
 	FVector ExplosionLocation;
-	FVector RotationAxisTowardsTarget;
+	FVector RotationAxisTarget;
 	FVector NewDirection;
 	FVector MovementVector;
 	float Dot;

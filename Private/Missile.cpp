@@ -47,7 +47,7 @@ void AMissile::Tick(float DeltaTime)                       // Called every frame
 
 	// store lifetime
 	Lifespan += DeltaTime;
-	
+
 	// perform homing to the target by rotating, both clients and server
 	Homing(DeltaTime);
 
@@ -58,7 +58,7 @@ void AMissile::Tick(float DeltaTime)                       // Called every frame
 
 		if (Lifespan > MaxLifeTime) {
 			//  reached max lifetime -> explosion etc.
-			if(ExplosionEffect) ExplosionEffect->Activate(true);
+			if (ExplosionEffect) ExplosionEffect->Activate(true);
 			Destroy();  // temp
 		}
 
@@ -78,9 +78,9 @@ void AMissile::Tick(float DeltaTime)                       // Called every frame
 
 	}
 	if (Role < ROLE_Authority) {                           // is client
-		
+
 		// get ping
-		if(GetWorld()->GetFirstPlayerController()){
+		if (GetWorld()->GetFirstPlayerController()) {
 			State = Cast<APlayerState>(GetWorld()->GetFirstPlayerController()->PlayerState);
 			if (State) {
 				Ping = float(State->Ping) * 0.001f;
@@ -90,7 +90,7 @@ void AMissile::Tick(float DeltaTime)                       // Called every frame
 			// client has now the most recent ping in seconds
 
 		}
-		
+
 
 	}
 
@@ -104,7 +104,7 @@ void AMissile::Tick(float DeltaTime)                       // Called every frame
 	UE_LOG(LogTemp, Warning, TEXT("Your message"));*/
 
 
-	
+
 	// continue moving forwards
 	AddActorWorldOffset(MovementVector);
 }
@@ -126,7 +126,7 @@ bool AMissile::TraceNextMovementForCollision()
 	TraceParams.bTraceComplex = true;
 	//TraceParams.bTraceAsyncScene = true;
 	TraceParams.bReturnPhysicalMaterial = false;
-	
+
 	//Ignore Actors
 	//TraceParams.AddIgnoredActor();
 	if (ActorLineTraceSingle(HitData, GetActorLocation(), GetActorLocation() + MovementVector, ECC_Visibility, TraceParams)) {
@@ -173,29 +173,32 @@ void AMissile::Homing(float DeltaTime)
 	//	DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	//}
 	//else {	
-		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
+	DirectionToTarget = CurrentTarget->GetComponentLocation() - GetActorLocation();
 	//}
 	// normalize and get dotproduct with missile forward vector
 	DirectionToTarget.Normalize();
 	Dot = FVector::DotProduct(DirectionToTarget, GetActorForwardVector());
 
-	// check if the dotproduct is negative and add PI if it is
-	Dot = (Dot < 0.0f) ? Dot + PI : Dot;
-	
-	AngleToTarget = FMath::Min(FMath::RadiansToDegrees(Dot), Turnspeed * DeltaTime);
-	
+	// the angle between targetvector and actor forwardvector
+	AngleToTarget = (Dot < 0.0f) ? (FMath::RadiansToDegrees(FMath::Abs(Dot)) + 90.0f) : FMath::RadiansToDegrees(Dot);
+
+	// Clamp Turning to max turnrate
+	AngleToTarget = FMath::Min(0.5f * AngleToTarget, Turnspeed * DeltaTime);
+
+	// debug message
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(Dot));
 
 	// calculate the vector that is orthogonal to direction to target and missile forward vector
 	// will be used to rotate the missile towards the target
-	RotationAxisTowardsTarget = FVector::CrossProduct(DirectionToTarget, GetActorForwardVector());
-	RotationAxisTowardsTarget.Normalize();
+	RotationAxisTarget = FVector::CrossProduct(GetActorForwardVector(), DirectionToTarget);
+	RotationAxisTarget.Normalize();
 
 	// rotate the missile forward vector towards target direction
-	NewDirection = GetActorForwardVector().RotateAngleAxis(-1.0f * AngleToTarget, RotationAxisTowardsTarget);
+	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisTarget);
 
 	// apply the new direction as rotation to the missile
 	SetActorRotation(NewDirection.Rotation());
-	
+
 }
 
 // 
@@ -268,17 +271,17 @@ void AMissile::RunsOnAllClients() {
 
 // multicasted function
 void AMissile::ServerRunsOnAllClients_Implementation() {
-	if (Role != ROLE_Authority) {
+	//if (Role < ROLE_Authority) {
 
-		SetActorTransform(MissileTransformOnAuthority);
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
+	//	SetActorTransform(MissileTransformOnAuthority);
+	//	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
 
-		if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
-		// currentTime.UtcNow().ToString()
-		int64 Milliseconds = currentTime.ToUnixTimestamp() * 1000 + currentTime.GetMillisecond();
+	//	if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
+	//	// currentTime.UtcNow().ToString()
+	//	int64 Milliseconds = currentTime.ToUnixTimestamp() * 1000 + currentTime.GetMillisecond();
 
-		if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
-	}
+	//	if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
+	//}
 }
 
 
