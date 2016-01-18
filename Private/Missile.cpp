@@ -145,58 +145,37 @@ void AMissile::Homing(float DeltaTime)
 	// get the vector from missile to the current target
 
 	//if (AdvancedHoming) { // is target prediction active?
-	//	// yes
-	//	CurrentTargetLocation = CurrentTarget->GetComponentLocation();
-	//	if (!LastTargetLocation.Equals(FVector::ZeroVector)) { // is old targetlocation a location that can be used?
-	//		// yes
-	//		int FrameCountBetweenRecalculation = 1;
-	//		if (FramesSinceLastVelocityCheck < FrameCountBetweenRecalculation) { // is still time until next recalculation of target velocity?
-	//			// yes: continue counting
-	//			++FramesSinceLastVelocityCheck;
-	//		}
-	//		else {
-	//			// no: recalculate target velocity
-	//			TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / (DeltaTime * float(FrameCountBetweenRecalculation));
-	//			// reset frame counter
-	//			FramesSinceLastVelocityCheck = 0;
-	//			// store current targetlocation for next recalculation
-	//			LastTargetLocation = CurrentTargetLocation;
-	//		}
-	//		// calculate new direction to intercept flightpath
-	//		DirectionToTarget = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity) - GetActorLocation();
-	//	}
-	//	else {
-	//		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
-	//	}
+		// yes
+		CurrentTargetLocation = CurrentTarget->GetComponentLocation();
 
-	//	// deactivated (debug)
+		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime;
+		
+		// store current targetlocation for next recalculation
+		LastTargetLocation = CurrentTargetLocation;
+		// calculate new direction to intercept flightpath
+		DirectionToTarget = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity) - GetActorLocation();
+	//}
+	//else {
 	//	DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	//}
-	//else {	
-	DirectionToTarget = CurrentTarget->GetComponentLocation() - GetActorLocation();
-	//}
-	// normalize and get dotproduct with missile forward vector
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(TargetVelocity.Size()));
+
+	// ----------------------
+
 	DirectionToTarget.Normalize();
-	Dot = FVector::DotProduct(DirectionToTarget, GetActorForwardVector());
+	//get dotproduct with missile forward vector	
+	AngleToTarget = FMath::Min(FMath::Acos(GetActorForwardVector() | DirectionToTarget) / DeltaTime /* increases turning at small angles */, MaxTurnspeed * DeltaTime);
 
-	// the angle between targetvector and actor forwardvector
-	AngleToTarget = (Dot < 0.0f) ? (FMath::Acos(FMath::Abs(Dot)) + 90.0f) : FMath::Acos(Dot);
+	//AngleToTarget = (Dot <= 0.0f) ? (180.0f + FMath::RadiansToDegrees(Dot)) : FMath::RadiansToDegrees(Dot);
 
-	// Clamp Turning to max turnrate
-	AngleToTarget = FMath::Min(AngleToTarget / DeltaTime, Turnspeed * DeltaTime);
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AngleToTarget / DeltaTime));
 
-	// debug message
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AngleToTarget));
-
-	// calculate the vector that is orthogonal to direction to target and missile forward vector
-	// will be used to rotate the missile towards the target
-	RotationAxisTarget = FVector::CrossProduct(GetActorForwardVector(), DirectionToTarget);
+	RotationAxisTarget = GetActorForwardVector() ^ DirectionToTarget;
 	RotationAxisTarget.Normalize();
-
 	// rotate the missile forward vector towards target direction
 	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisTarget);
-
 	// apply the new direction as rotation to the missile
+
 	SetActorRotation(NewDirection.Rotation());
 
 }
@@ -322,3 +301,4 @@ void AMissile::Client_RunsOnOwningClientOnly_Implementation()
 }
 
 ////// end: example for function replication
+

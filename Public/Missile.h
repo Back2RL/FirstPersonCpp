@@ -35,7 +35,7 @@ public:
 
 	/** sets missile turnspeed in deg/s*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float Turnspeed = 90.0f;
+		float MaxTurnspeed = 40.0f;
 
 	/** missile range in m */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
