@@ -8,7 +8,7 @@
 // Sets default values
 AMissile::AMissile()
 {
-	bReplicates = false/*temporarily*/;                                    // Set the missile to be replicated	
+	bReplicates = true;                                    // Set the missile to be replicated	
 	PrimaryActorTick.bCanEverTick = true;                  // enable Tick
 
 }
@@ -144,7 +144,7 @@ void AMissile::Homing(float DeltaTime)
 	if (!CurrentTarget) return;
 	// get the vector from missile to the current target
 
-	//if (AdvancedHoming) { // is target prediction active?
+	if (AdvancedHoming) { // is target prediction active?
 		// yes
 		CurrentTargetLocation = CurrentTarget->GetComponentLocation();
 
@@ -154,11 +154,12 @@ void AMissile::Homing(float DeltaTime)
 		LastTargetLocation = CurrentTargetLocation;
 		// calculate new direction to intercept flightpath
 		DirectionToTarget = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity) - GetActorLocation();
-	//}
-	//else {
-	//	DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
-	//}
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(TargetVelocity.Size()));
+	}
+	else {
+		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
+	}
+
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(int(AdvancedHoming)));
 
 	// ----------------------
 
