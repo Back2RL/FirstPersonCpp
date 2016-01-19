@@ -35,15 +35,19 @@ public:
 
 	/** sets missile turnspeed in deg/s*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float MaxTurnspeed = 40.0f;
+		float MaxTurnspeed = 110.0f;
+
+	/** sets missile velocity in cm/s*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+		float Velocity = 4200.0f;
 
 	/** distance to target where prediction is working at full strength */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AdvancedMissileMinRange = 5000.0f;
+		float AdvancedMissileMinRange = Velocity;
 
 	/** distance to target where prediction will be deactivated */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AdvancedMissileMaxRange = 20000.0f;
+		float AdvancedMissileMaxRange = 3.0f * Velocity;
 
 	/** missile range in m */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
@@ -51,15 +55,12 @@ public:
 
 	/** missile explosionradius in cm */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float ExplosionRadius = 5000.0f;	
+		float ExplosionRadius = 500.0f;	
 
 	/** missile explosioneffect */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		class UParticleSystemComponent* ExplosionEffect;
-		 
-	/** sets missile velocity in cm/s*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float Velocity = 2000.0f;
+	
 
 	/** stores how many degree the missile is currently turning when homing*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
@@ -136,8 +137,9 @@ private:
 	FVector MovementVector;
 	float Dot;
 	FVector DirectionToTarget;
-	FVector CurrentTargetLocation;
+	FVector CurrentTargetLocation;	
 	FVector LastTargetLocation;
+	FVector LastActorLocation;
 	FVector TargetVelocity;
 	FVector PredictedTargetLocation;
 	int FramesSinceLastVelocityCheck;
@@ -146,5 +148,7 @@ private:
 	FDateTime currentTime;
 	float Ping;
 	float DistanceToTarget;
+	float LastDistanceToTarget = ExplosionRadius;
 	float AdvancedHomingStrength;	
+		
 };
