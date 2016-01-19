@@ -45,10 +45,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float AdvancedMissileMaxRange = 20000.0f;
 
-
 	/** missile range in m */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float Range = 4000.0f;
+
+	/** missile explosionradius in cm */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+		float ExplosionRadius = 5000.0f;	
 
 	/** missile explosioneffect */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
@@ -70,18 +73,12 @@ public:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		bool AdvancedHoming = true;
 
-	/**	 check if missile will collide when performing next movement*/
-	UFUNCTION(BlueprintCallable,  Category = "Missile")
-		bool TraceNextMovementForCollision();
-
 	///** A Replicated Boolean Flag */
 	//UPROPERTY(Replicated)
 	//	uint32 bFlag : 1;
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		FTransform MissileTransformOnAuthority;
-
-
 
 	/** A Replicated Array Of Integers */
 	UPROPERTY(Replicated)
@@ -108,8 +105,6 @@ public:
 		void ServerRunsOnAllClients();
 	virtual void RunsOnAllClients();
 
-
-
 	////// example for function replication------------------------
 	UPROPERTY(Replicated)
 	bool bSomeBool = false;
@@ -128,19 +123,15 @@ public:
 
 	////// end: example for function replication
 
-
-
-
-
 private:
 
 	UFUNCTION()
 		void OnRep_Flag();
 
 	float MaxLifeTime;
-	float Lifespan;
+	float LifeTime;
 	FVector ExplosionLocation;
-	FVector RotationAxisTarget;
+	FVector RotationAxisForTurningToTarget;
 	FVector NewDirection;
 	FVector MovementVector;
 	float Dot;
@@ -152,10 +143,8 @@ private:
 	int FramesSinceLastVelocityCheck;
 	/** perform homing to the target by rotating*/
 	void Homing(float DeltaTime);
-
 	FDateTime currentTime;
 	float Ping;
-
-
-
+	float DistanceToTarget;
+	float AdvancedHomingStrength;	
 };
