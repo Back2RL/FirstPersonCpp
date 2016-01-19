@@ -37,6 +37,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float MaxTurnspeed = 40.0f;
 
+	/** distance to target where prediction is working at full strength */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+		float AdvancedMissileMinRange = 5000.0f;
+
+	/** distance to target where prediction will be deactivated */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+		float AdvancedMissileMaxRange = 20000.0f;
+
+
 	/** missile range in m */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float Range = 4000.0f;

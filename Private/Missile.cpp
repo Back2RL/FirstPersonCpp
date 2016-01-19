@@ -10,7 +10,7 @@ AMissile::AMissile()
 {
 	bReplicates = true;                                    // Set the missile to be replicated	
 	PrimaryActorTick.bCanEverTick = true;                  // enable Tick
-
+	bAlwaysRelevant = true;
 }
 
 void AMissile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
@@ -149,17 +149,31 @@ void AMissile::Homing(float DeltaTime)
 		CurrentTargetLocation = CurrentTarget->GetComponentLocation();
 
 		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime;
-		
+
 		// store current targetlocation for next recalculation
 		LastTargetLocation = CurrentTargetLocation;
-		// calculate new direction to intercept flightpath
-		DirectionToTarget = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity) - GetActorLocation();
+
+
+		FVector PredictedTargetLocation = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity);
+
+		float distance = (CurrentTargetLocation - GetActorLocation()).Size();
+		
+
+		float factor = FMath::GetMappedRangeValueClamped(FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange), FVector2D(0.0f, 1.0f), distance);
+
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(factor));
+
+		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * factor)) - GetActorLocation();
+
+
+
+
 	}
 	else {
 		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	}
 
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(int(AdvancedHoming)));
+	
 
 	// ----------------------
 
@@ -251,17 +265,17 @@ void AMissile::RunsOnAllClients() {
 
 // multicasted function
 void AMissile::ServerRunsOnAllClients_Implementation() {
-	//if (Role < ROLE_Authority) {
+	if (Role < ROLE_Authority) {
 
-	//	SetActorTransform(MissileTransformOnAuthority);
-	//	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
+		SetActorTransform(MissileTransformOnAuthority);
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
 
-	//	if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
-	//	// currentTime.UtcNow().ToString()
-	//	int64 Milliseconds = currentTime.ToUnixTimestamp() * 1000 + currentTime.GetMillisecond();
+		if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
+		// currentTime.UtcNow().ToString()
+		int64 Milliseconds = currentTime.ToUnixTimestamp() * 1000 + currentTime.GetMillisecond();
 
-	//	if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
-	//}
+		if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
+	}
 }
 
 
