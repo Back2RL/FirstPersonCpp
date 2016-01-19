@@ -28,33 +28,33 @@ void AMissile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifet
 }
 
 // Called when the game starts or when spawned
-void AMissile::BeginPlay()                                 
+void AMissile::BeginPlay()
 {
 	Super::BeginPlay();
 
 	if (Role == ROLE_Authority && bReplicates) {           // check if current actor has authority
-		                                                   // start a timer that executes a function (multicast)
-		FTimerHandle Timer;	                               
+														   // start a timer that executes a function (multicast)
+		FTimerHandle Timer;
 		const FTimerDelegate TimerDelegate = FTimerDelegate::CreateUObject(this, &AMissile::RunsOnAllClients);
-		GetWorldTimerManager().SetTimer(Timer, TimerDelegate, NetUpdateFrequency, true, 0.0f);				
-		
+		GetWorldTimerManager().SetTimer(Timer, TimerDelegate, NetUpdateFrequency, true, 0.0f);
+
 		MaxLifeTime = Range / (Velocity * 0.01f);          // calculate max missile liftime (t = s/v (SI units))
 		InitialLifeSpan = MaxLifeTime + 5.0f;              // set missile lifetime
 	}
 }
 
 // Called every frame
-void AMissile::Tick(float DeltaTime)                      
+void AMissile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-		
+
 	LifeTime += DeltaTime;                                 // store lifetime
 	Homing(DeltaTime);                                     // perform homing to the target by rotating, both clients and server
 
 	// the distance the missile will be moved at the end of the current tick
 	MovementVector = GetActorForwardVector() * DeltaTime * Velocity;
 
-	
+
 	if (Role == ROLE_Authority) {
 		// is authority
 		if (LifeTime > MaxLifeTime) {                      //  reached max lifetime -> explosion etc.
@@ -68,18 +68,18 @@ void AMissile::Tick(float DeltaTime)
 
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(1, DeltaTime/*seconds*/, FColor::Red, "Authority");
 	}
-	else { 
+	else {
 		// is NOT authority
-		
+
 		if (GetWorld()->GetFirstPlayerController()) {      // get ping
 			State = Cast<APlayerState>(GetWorld()->GetFirstPlayerController()->PlayerState); // "APlayerState" hardcoded, needs to be changed for main project
 			if (State) {
 				Ping = float(State->Ping) * 0.001f;
 				// debug display ping on screen
-				if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Green, FString::SanitizeFloat(Ping));
+				//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Green, FString::SanitizeFloat(Ping));
 
 				// client has now the most recent ping in seconds
-			}			
+			}
 		}
 	}
 	// perform movement
@@ -94,9 +94,9 @@ float AMissile::GetMissileLifetime()
 
 // perform homing to the target by rotating
 void AMissile::Homing(float DeltaTime)
-{	
+{
 	if (!CurrentTarget) return;                            // no homing when there is no valid target	
-	
+
 	DistanceToTarget = (CurrentTargetLocation - GetActorLocation()).Size();
 	if (DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
 		Destroy();  // temp
@@ -111,8 +111,8 @@ void AMissile::Homing(float DeltaTime)
 		PredictedTargetLocation = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity);
 		AdvancedHomingStrength = FMath::GetMappedRangeValueClamped(FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange), FVector2D(0.0f, 1.0f), DistanceToTarget);
 
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AdvancedHomingStrength));
-		
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AdvancedHomingStrength));
+
 		// calculate the new heading direction of the missile by taking the distance to the target into consideration
 		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * AdvancedHomingStrength)) - GetActorLocation();
 	}
@@ -120,7 +120,7 @@ void AMissile::Homing(float DeltaTime)
 		// normal homing
 		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	}
-	
+
 	DirectionToTarget.Normalize();
 	//get dotproduct with missile forward vector	
 	AngleToTarget = FMath::Min(FMath::Acos(GetActorForwardVector() | DirectionToTarget) / DeltaTime /* increases turning at small angles (temp?) */, MaxTurnspeed * DeltaTime);
@@ -131,7 +131,7 @@ void AMissile::Homing(float DeltaTime)
 	RotationAxisForTurningToTarget.Normalize();
 
 	// rotate the missile forward vector towards target direction
-	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisForTurningToTarget);	
+	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisForTurningToTarget);
 
 	SetActorRotation(NewDirection.Rotation());             // apply the new direction as rotation to the missile
 }
@@ -162,13 +162,13 @@ void AMissile::ServerRunsOnAllClients_Implementation() {
 	if (Role < ROLE_Authority) {
 
 		SetActorTransform(MissileTransformOnAuthority);
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f/*seconds*/, FColor::Red, "corrected missile transform");
 
-		if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(2, 3.0f/*seconds*/, FColor::Green, "(Multicast)");
 		// currentTime.UtcNow().ToString()
 		int64 Milliseconds = currentTime.ToUnixTimestamp() * 1000 + currentTime.GetMillisecond();
 
-		if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
 	}
 }
 
@@ -220,7 +220,7 @@ void AMissile::ServerDealing_Implementation() {
 ////// example for function replication------------------------
 void AMissile::SetSomeBool(bool bNewSomeBool)
 {
-	if (GEngine) GEngine->AddOnScreenDebugMessage(4, 20.0f/*seconds*/, FColor::White, FString("Client calls serverfunction to set a bool ").Append(FString(bSomeBool ? "True" : "False")));
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(4, 20.0f/*seconds*/, FColor::White, FString("Client calls serverfunction to set a bool ").Append(FString(bSomeBool ? "True" : "False")));
 	ServerSetSomeBool(bNewSomeBool);
 }
 
@@ -232,8 +232,8 @@ bool AMissile::ServerSetSomeBool_Validate(bool bNewSomeBool)
 void AMissile::ServerSetSomeBool_Implementation(bool bNewSomeBool)
 {
 	bSomeBool = bNewSomeBool;
-	if (GEngine) GEngine->AddOnScreenDebugMessage(5, 20.0f/*seconds*/, FColor::Blue, "bool was set on server");
-	if (GEngine) GEngine->AddOnScreenDebugMessage(6, 20.0f/*seconds*/, FColor::Blue, FString(bSomeBool ? "true" : "false"));
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(5, 20.0f/*seconds*/, FColor::Blue, "bool was set on server");
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(6, 20.0f/*seconds*/, FColor::Blue, FString(bSomeBool ? "true" : "false"));
 
 }
 ////// end: example for function replication------------------------
