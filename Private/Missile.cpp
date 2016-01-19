@@ -48,6 +48,7 @@ void AMissile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
 	LifeTime += DeltaTime;                                 // store lifetime
 	Homing(DeltaTime);                                     // perform homing to the target by rotating, both clients and server
 
@@ -67,6 +68,10 @@ void AMissile::Tick(float DeltaTime)
 		MissileTransformOnAuthority = FTransform(GetActorRotation(), GetActorLocation() + MovementVector, GetActorScale3D());
 
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(1, DeltaTime/*seconds*/, FColor::Red, "Authority");
+
+		// store current location for next Tick
+		LastActorLocation = GetActorLocation();
+
 	}
 	else {
 		// is NOT authority
@@ -82,8 +87,12 @@ void AMissile::Tick(float DeltaTime)
 			}
 		}
 	}
+
+
 	// perform movement
 	AddActorWorldOffset(MovementVector);
+
+
 }
 
 // return current lifetime of Missile in seconds
@@ -97,16 +106,24 @@ void AMissile::Homing(float DeltaTime)
 {
 	if (!CurrentTarget) return;                            // no homing when there is no valid target	
 
-	DistanceToTarget = (CurrentTargetLocation - GetActorLocation()).Size();
-	if (DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
-		Destroy();  // temp
+	CurrentTargetLocation = CurrentTarget->GetComponentLocation();
+
+	if (Role == ROLE_Authority) {
+		DistanceToTarget = (FMath::ClosestPointOnLine(LastActorLocation, GetActorLocation(), LastTargetLocation) - LastTargetLocation).Size();
+		
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Red, FString::FromInt(DistanceToTarget));
+
+		if (DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
+			if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(DistanceToTarget));
+			Destroy();  // temp
+		}
+		//LastDistanceToTarget = DistanceToTarget;
 	}
 
 	if (AdvancedHoming) {                                  // is target prediction active?
-		// yes
-		CurrentTargetLocation = CurrentTarget->GetComponentLocation();
+		// yes		
 		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime; // A vector with v(x,y,z) = [cm/s]		
-		LastTargetLocation = CurrentTargetLocation;        // store current targetlocation for next recalculation
+		
 
 		PredictedTargetLocation = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity);
 		AdvancedHomingStrength = FMath::GetMappedRangeValueClamped(FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange), FVector2D(0.0f, 1.0f), DistanceToTarget);
@@ -120,6 +137,8 @@ void AMissile::Homing(float DeltaTime)
 		// normal homing
 		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	}
+
+	LastTargetLocation = CurrentTargetLocation;        // store current targetlocation for next recalculation
 
 	DirectionToTarget.Normalize();
 	//get dotproduct with missile forward vector	
@@ -171,7 +190,6 @@ void AMissile::ServerRunsOnAllClients_Implementation() {
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(3, 3.0f/*seconds*/, FColor::Green, FString::SanitizeFloat((float)Milliseconds));
 	}
 }
-
 //----------------------------------------------------- TESTING ------------------------------------------------
 
 // testing
