@@ -39,7 +39,11 @@ public:
 
 	/** sets missile velocity in cm/s*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float Velocity = 4200.0f;
+		float MaxVelocity = 4200.0f;
+
+	/** time it takes for the missile to reach max velocity*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+		float AccelerationTime = 0.5f;
 
 	/** distance to target where prediction is working at full strength */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
@@ -128,6 +132,7 @@ private:
 
 	UFUNCTION()
 		void OnRep_Flag();
+	bool bNotFirstTick = false;
 
 	float MaxLifeTime;
 	float LifeTime;
@@ -135,7 +140,11 @@ private:
 	FVector RotationAxisForTurningToTarget;
 	FVector NewDirection;
 	FVector MovementVector;
+	float Acceleration;
+	bool bReachedMaxVelocity = false;
+	float Velocity;
 	float Dot;
+	float Turnspeed;
 	FVector DirectionToTarget;
 	FVector CurrentTargetLocation;	
 	FVector LastTargetLocation;
@@ -150,5 +159,15 @@ private:
 	float DistanceToTarget;
 	float LastDistanceToTarget = ExplosionRadius;
 	float AdvancedHomingStrength;	
-		
+
+	float DistanceLineLine(const FVector& a1,
+		const FVector& a2,
+		const FVector& b1,
+		const FVector& b2);
+	bool ClosestPointsOnTwoLines(const FVector& LineStartA,
+		const FVector& LineEndA,
+		const FVector& LineStartB,
+		const FVector& LineEndB,
+		FVector& PointA,
+		FVector& PointB);
 };

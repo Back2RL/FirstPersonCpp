@@ -4,6 +4,7 @@
 #include "Missile.h"
 #include "UnrealNetwork.h"
 
+#define deg(a) (a * (180.f) / PI)
 
 // Sets default values
 AMissile::AMissile()
@@ -41,6 +42,7 @@ void AMissile::BeginPlay()
 		MaxLifeTime = Range / (Velocity * 0.01f);          // calculate max missile liftime (t = s/v (SI units))
 		InitialLifeSpan = MaxLifeTime + 5.0f;              // set missile lifetime
 	}
+	Acceleration = 1.0f / AccelerationTime;
 }
 
 // Called every frame
@@ -65,7 +67,9 @@ void AMissile::Tick(float DeltaTime)
 		}
 
 		// store current missile transform of client (replicated)
-		MissileTransformOnAuthority = FTransform(GetActorRotation(), GetActorLocation() + MovementVector, GetActorScale3D());
+		MissileTransformOnAuthority = FTransform(GetActorRotation(),
+			GetActorLocation() + MovementVector,
+			GetActorScale3D());
 
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(1, DeltaTime/*seconds*/, FColor::Red, "Authority");
 
@@ -90,9 +94,22 @@ void AMissile::Tick(float DeltaTime)
 
 
 	// perform movement
-	AddActorWorldOffset(MovementVector);
 
 
+	if (bReachedMaxVelocity) {
+		AddActorWorldOffset(MovementVector);
+	}
+	else {
+		Velocity += Acceleration * DeltaTime * MaxVelocity;
+		Turnspeed += Acceleration * DeltaTime * MaxTurnspeed;
+		if (Velocity > MaxVelocity) {
+			Velocity = MaxVelocity;
+			Turnspeed = MaxTurnspeed;
+			bReachedMaxVelocity = true;
+		}
+		bNotFirstTick = true;
+		AddActorWorldOffset(MovementVector);
+	}
 }
 
 // return current lifetime of Missile in seconds
@@ -109,29 +126,51 @@ void AMissile::Homing(float DeltaTime)
 	CurrentTargetLocation = CurrentTarget->GetComponentLocation();
 
 	if (Role == ROLE_Authority) {
-		DistanceToTarget = (FMath::ClosestPointOnLine(LastActorLocation, GetActorLocation(), LastTargetLocation) - LastTargetLocation).Size();
-		
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Red, FString::FromInt(DistanceToTarget));
 
-		if (DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
-			if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(DistanceToTarget));
+		DistanceToTarget = (GetActorLocation() - CurrentTargetLocation).Size();
+
+		float PossibleGap = Velocity * DeltaTime;
+
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(PossibleGap));
+
+		if (DistanceToTarget < ExplosionRadius + PossibleGap && bNotFirstTick) {              // is the target in explosion range
+			//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(DistanceToTarget));
 			Destroy();  // temp
 		}
-		//LastDistanceToTarget = DistanceToTarget;
+
+		//if (DistanceToTarget < ((Velocity + (TargetVelocity).Size()) * DeltaTime)) {
+		//	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Blue, "RangeChecking");
+
+		//	float MinDistance = DistanceLineLine(GetActorLocation(), CurrentTargetLocation,
+		//		GetActorForwardVector(),
+		//		TargetVelocity);
+		//	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 1/*seconds*/, FColor::Green, FString::FromInt(MinDistance));
+
+		//	if (((MinDistance > 0.0f && MinDistance < ExplosionRadius)) || DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
+
+		//		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(MinDistance));
+		//		Destroy();  // temp
+		//	}
+		//}
+
+		LastDistanceToTarget = (GetActorLocation() - CurrentTargetLocation).Size();
 	}
 
 	if (AdvancedHoming) {                                  // is target prediction active?
 		// yes		
 		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime; // A vector with v(x,y,z) = [cm/s]		
-		
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(TargetVelocity.Size()));
 
 		PredictedTargetLocation = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity);
-		AdvancedHomingStrength = FMath::GetMappedRangeValueClamped(FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange), FVector2D(0.0f, 1.0f), DistanceToTarget);
+		AdvancedHomingStrength = FMath::GetMappedRangeValueClamped(
+			FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange),
+			FVector2D(0.0f, 1.0f),
+			DistanceToTarget);
 
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AdvancedHomingStrength));
 
 		// calculate the new heading direction of the missile by taking the distance to the target into consideration
-		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * AdvancedHomingStrength)) - GetActorLocation();
+		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * FMath::Sqrt(AdvancedHomingStrength))) - GetActorLocation();
 	}
 	else {
 		// normal homing
@@ -139,19 +178,18 @@ void AMissile::Homing(float DeltaTime)
 	}
 
 	LastTargetLocation = CurrentTargetLocation;        // store current targetlocation for next recalculation
+	DirectionToTarget.Normalize();                            // normalize the direction vector
 
-	DirectionToTarget.Normalize();
-	//get dotproduct with missile forward vector	
-	AngleToTarget = FMath::Min(FMath::Acos(GetActorForwardVector() | DirectionToTarget) / DeltaTime /* increases turning at small angles (temp?) */, MaxTurnspeed * DeltaTime);
-
-	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AngleToTarget / DeltaTime));
-
+	AngleToTarget = FMath::Clamp(deg(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnspeed * DeltaTime);
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "AngleToTarget (deg) = " + FString::SanitizeFloat(AngleToTarget));
+	// rotation axis for turning the missile towards the target
 	RotationAxisForTurningToTarget = GetActorForwardVector() ^ DirectionToTarget;
-	RotationAxisForTurningToTarget.Normalize();
-
 	// rotate the missile forward vector towards target direction
-	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisForTurningToTarget);
-
+	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisForTurningToTarget.GetSafeNormal());
+	/* // Debug
+	float newAngle = deg(FMath::Acos(FVector::DotProduct(NewDirection, DirectionToTarget)));
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime, FColor::Blue, "newAngleToTarget = " + FString::SanitizeFloat(newAngle));
+	*/
 	SetActorRotation(NewDirection.Rotation());             // apply the new direction as rotation to the missile
 }
 
@@ -229,6 +267,49 @@ void AMissile::Dealing() {
 		ServerDealing();
 	}
 }
+
+float AMissile::DistanceLineLine(const FVector& a1,
+	const FVector& a2,
+	const FVector& b1,
+	const FVector& b2) {
+	return ((a1 - a2)*(b1 ^ b2)).Size() / (b1 ^ b2).Size();
+}
+
+//returns the Distance or -1 / WIP
+bool AMissile::ClosestPointsOnTwoLines(const FVector& LineStartA,
+	const FVector& LineEndA,
+	const FVector& LineStartB,
+	const FVector& LineEndB,
+	FVector& PointA,
+	FVector& PointB) {
+	const FVector u = LineEndA - LineStartA;
+	const FVector v = LineEndB - LineStartB;
+
+	const float X1 = (LineStartA - LineStartB) | u;
+	const float X2 = (LineStartA - LineStartB) | v;
+
+	const float Y1 = u | u;
+	const float Y2 = v | u;
+
+	const float Z1 = Y2;
+	const float Z2 = v | v;
+
+	//X1 + t * Y1 - s * Z1 = 0;
+	//X2 + t * Y2 - s * Z2 = 0;
+
+	//(Y2/Y1 * X1 - X2) - s * (Y2 / Y1 * Z1 - Z2) = 0
+	float s = (Y2 / Y1 * X1 - X2) / (Y2 / Y1 * Z1 - Z2);
+	float t = (-X1 + s * Z1) / Y1;
+
+	PointA = LineStartA + t * u;
+	PointB = LineStartB + s * v;
+
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, GetWorld()->GetDeltaSeconds()/*seconds*/, FColor::Red, "s = " + FString::SanitizeFloat(s) + " t = " + FString::SanitizeFloat(t));
+
+	return (t*t < 1.0f && s*s < 1.0f);
+}
+
+
 
 // testing
 void AMissile::ServerDealing_Implementation() {
