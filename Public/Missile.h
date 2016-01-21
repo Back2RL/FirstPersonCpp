@@ -33,25 +33,25 @@ public:
 			const FVector &TargetVelocity,
 			const float ProjectileVelocity);
 
-	/** sets missile turnspeed in deg/s*/
+	/** missile turnrate in deg/s*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float MaxTurnspeed = 110.0f;
+		float MaxTurnrate = 110.0f;
 
-	/** sets missile velocity in cm/s*/
+	/** missile velocity in cm/s*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float MaxVelocity = 4200.0f;
 
 	/** time it takes for the missile to reach max velocity*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AccelerationTime = 0.5f;
+		float AccelerationTime = 1.0f;
 
 	/** distance to target where prediction is working at full strength */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AdvancedMissileMinRange = Velocity;
+		float AdvancedMissileMinRange = 5000.0f;
 
 	/** distance to target where prediction will be deactivated */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AdvancedMissileMaxRange = 3.0f * Velocity;
+		float AdvancedMissileMaxRange = 15000.0f;
 
 	/** missile range in m */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
@@ -61,15 +61,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
 		float ExplosionRadius = 500.0f;	
 
-	/** missile explosioneffect */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		class UParticleSystemComponent* ExplosionEffect;
+	///** missile explosioneffect */
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
+	//	class UParticleSystemComponent* ExplosionEffect;
 	
-
-	/** stores how many degree the missile is currently turning when homing*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Missile")
-		float AngleToTarget;
-
 	/** the current target (scenecpmponent) the missile is homing towards */
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Missile")
 	class USceneComponent* CurrentTarget;
@@ -140,11 +135,12 @@ private:
 	FVector RotationAxisForTurningToTarget;
 	FVector NewDirection;
 	FVector MovementVector;
+	float AngleToTarget;
 	float Acceleration;
 	bool bReachedMaxVelocity = false;
 	float Velocity;
 	float Dot;
-	float Turnspeed;
+	float Turnrate;
 	FVector DirectionToTarget;
 	FVector CurrentTargetLocation;	
 	FVector LastTargetLocation;

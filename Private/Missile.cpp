@@ -88,25 +88,22 @@ void AMissile::Tick(float DeltaTime)
 			}
 		}
 	}
-
-
-	// perform movement
-
-
-	if (bReachedMaxVelocity) {
-		AddActorWorldOffset(MovementVector);
-	}
-	else {
-		Velocity += Acceleration * DeltaTime * MaxVelocity;
-		Turnspeed += Acceleration * DeltaTime * MaxTurnspeed;
+	
+	// is missile is still accelerating? 
+	if (!bReachedMaxVelocity) {                                      
+		Velocity += Acceleration * DeltaTime * MaxVelocity;          // inrease Velocity
+		Turnrate += Acceleration * DeltaTime * MaxTurnrate;          // inrease Turnrate
+		// has reached max velocity?
 		if (Velocity > MaxVelocity) {
 			Velocity = MaxVelocity;
-			Turnspeed = MaxTurnspeed;
-			bReachedMaxVelocity = true;
+			Turnrate = MaxTurnrate;
+			bReachedMaxVelocity = true;                              // has now reached max velocity
 		}
 		bNotFirstTick = true;
-		AddActorWorldOffset(MovementVector);
 	}
+	// perform movement
+	AddActorWorldOffset(MovementVector);
+
 }
 
 // return current lifetime of Missile in seconds
@@ -152,17 +149,18 @@ void AMissile::Homing(float DeltaTime) {
 		// calculate the new forward vector of the missile by taking the distance to the target into consideration 
 		// (sqrt of homing strength so that the transition is not linear)
 		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * FMath::Sqrt(AdvancedHomingStrength))) - GetActorLocation();
-		
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Green, "advanced Homing");
 	}
 	else {
 		// normal homing
-		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
+		DirectionToTarget = (CurrentTargetLocation - GetActorLocation());
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Red, "normal Homing");
 	}
 	
 	DirectionToTarget.Normalize();                            // normalize the direction vector
 	
 	// calculate the angle the missile will turn (limited by the max turnspeed [deg/s] )
-	AngleToTarget = FMath::Clamp(FMath::RadiansToDegrees(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnspeed * DeltaTime);
+	AngleToTarget = FMath::Clamp(FMath::RadiansToDegrees(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnrate * DeltaTime);
 	// debug
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "Turnrate [deg/s] = " + FString::FromInt(AngleToTarget / DeltaTime));
 	
