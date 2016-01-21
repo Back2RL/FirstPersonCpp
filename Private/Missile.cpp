@@ -4,8 +4,6 @@
 #include "Missile.h"
 #include "UnrealNetwork.h"
 
-#define deg(a) (a * (180.f) / PI)
-
 // Sets default values
 AMissile::AMissile()
 {
@@ -14,7 +12,6 @@ AMissile::AMissile()
 	bAlwaysRelevant = true;
 
 }
-
 
 // replication of variables
 void AMissile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
@@ -119,77 +116,62 @@ float AMissile::GetMissileLifetime()
 }
 
 // perform homing to the target by rotating
-void AMissile::Homing(float DeltaTime)
-{
-	if (!CurrentTarget) return;                            // no homing when there is no valid target	
+void AMissile::Homing(float DeltaTime) {
+	if (!CurrentTarget) return;                                           // no homing when there is no valid target
+	CurrentTargetLocation = CurrentTarget->GetComponentLocation();        // store the current target location
 
-	CurrentTargetLocation = CurrentTarget->GetComponentLocation();
-
-	if (Role == ROLE_Authority) {
-
+	// actor is authority
+	if (Role == ROLE_Authority) {                                        
 		DistanceToTarget = (GetActorLocation() - CurrentTargetLocation).Size();
+		float MissileTravelDistance = Velocity * DeltaTime;               // the distance between the current missile location and the next location
 
-		float PossibleGap = Velocity * DeltaTime;
-
-		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::FromInt(PossibleGap));
-
-		if (DistanceToTarget < ExplosionRadius + PossibleGap && bNotFirstTick) {              // is the target in explosion range
-			//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(DistanceToTarget));
+		// is the target inside explosionradius? (missiletraveldistance is for fast moving missiles with low fps)
+		if (DistanceToTarget < ExplosionRadius + MissileTravelDistance && bNotFirstTick) {
+			// TODO
 			Destroy();  // temp
 		}
-
-		//if (DistanceToTarget < ((Velocity + (TargetVelocity).Size()) * DeltaTime)) {
-		//	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Blue, "RangeChecking");
-
-		//	float MinDistance = DistanceLineLine(GetActorLocation(), CurrentTargetLocation,
-		//		GetActorForwardVector(),
-		//		TargetVelocity);
-		//	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 1/*seconds*/, FColor::Green, FString::FromInt(MinDistance));
-
-		//	if (((MinDistance > 0.0f && MinDistance < ExplosionRadius)) || DistanceToTarget < ExplosionRadius) {              // is the target in explosion range
-
-		//		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(MinDistance));
-		//		Destroy();  // temp
-		//	}
-		//}
-
-		LastDistanceToTarget = (GetActorLocation() - CurrentTargetLocation).Size();
 	}
 
-	if (AdvancedHoming) {                                  // is target prediction active?
-		// yes		
-		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime; // A vector with v(x,y,z) = [cm/s]		
-		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3/*seconds*/, FColor::Green, FString::FromInt(TargetVelocity.Size()));
+	// is target prediction active?
+	if (AdvancedHoming) {                                  
+		// target prediction
+		TargetVelocity = (CurrentTargetLocation - LastTargetLocation) / DeltaTime;  // A vector with v(x,y,z) = [cm/s]
+		LastTargetLocation = CurrentTargetLocation;                                 // store current targetlocation for next recalculation of target velocity
 
+		// calculate the location where missile and target will hit each other
 		PredictedTargetLocation = LinearTargetPrediction(CurrentTargetLocation, GetActorLocation(), TargetVelocity, Velocity);
+
+		// a factor (0.0f - 1.0f) so that the missile is only following the target when far away and is predicting the targetlocation when close
 		AdvancedHomingStrength = FMath::GetMappedRangeValueClamped(
 			FVector2D(AdvancedMissileMaxRange, AdvancedMissileMinRange),
 			FVector2D(0.0f, 1.0f),
 			DistanceToTarget);
-
+		//debug
 		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, FString::SanitizeFloat(AdvancedHomingStrength));
 
-		// calculate the new heading direction of the missile by taking the distance to the target into consideration
+		// calculate the new forward vector of the missile by taking the distance to the target into consideration 
+		// (sqrt of homing strength so that the transition is not linear)
 		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * FMath::Sqrt(AdvancedHomingStrength))) - GetActorLocation();
+		
 	}
 	else {
 		// normal homing
 		DirectionToTarget = (CurrentTarget->GetComponentLocation() - GetActorLocation());
 	}
-
-	LastTargetLocation = CurrentTargetLocation;        // store current targetlocation for next recalculation
+	
 	DirectionToTarget.Normalize();                            // normalize the direction vector
-
-	AngleToTarget = FMath::Clamp(deg(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnspeed * DeltaTime);
-	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "AngleToTarget (deg) = " + FString::SanitizeFloat(AngleToTarget));
+	
+	// calculate the angle the missile will turn (limited by the max turnspeed [deg/s] )
+	AngleToTarget = FMath::Clamp(FMath::RadiansToDegrees(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnspeed * DeltaTime);
+	// debug
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "AngleToTarget (deg) = " + FString::FromInt(AngleToTarget));
+	
 	// rotation axis for turning the missile towards the target
 	RotationAxisForTurningToTarget = GetActorForwardVector() ^ DirectionToTarget;
+
 	// rotate the missile forward vector towards target direction
 	NewDirection = GetActorForwardVector().RotateAngleAxis(AngleToTarget, RotationAxisForTurningToTarget.GetSafeNormal());
-	/* // Debug
-	float newAngle = deg(FMath::Acos(FVector::DotProduct(NewDirection, DirectionToTarget)));
-	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime, FColor::Blue, "newAngleToTarget = " + FString::SanitizeFloat(newAngle));
-	*/
+
 	SetActorRotation(NewDirection.Rotation());             // apply the new direction as rotation to the missile
 }
 
