@@ -164,7 +164,7 @@ void AMissile::Homing(float DeltaTime) {
 	// calculate the angle the missile will turn (limited by the max turnspeed [deg/s] )
 	AngleToTarget = FMath::Clamp(FMath::RadiansToDegrees(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnspeed * DeltaTime);
 	// debug
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "AngleToTarget (deg) = " + FString::FromInt(AngleToTarget));
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "Turnrate [deg/s] = " + FString::FromInt(AngleToTarget / DeltaTime));
 	
 	// rotation axis for turning the missile towards the target
 	RotationAxisForTurningToTarget = GetActorForwardVector() ^ DirectionToTarget;
