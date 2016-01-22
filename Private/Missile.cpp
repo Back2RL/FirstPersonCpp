@@ -25,6 +25,24 @@ void AMissile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifet
 
 }
 
+#if WITH_EDITOR
+void AMissile::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	// do stuff e.g.
+	//AdvancedMissileMinRange = MaxVelocity;
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+#endif
+
+//allows calculation of missing values that have dependencies
+void AMissile::PostInitProperties()
+{
+	Super::PostInitProperties();
+	// do stuff e.g.
+	// AdvancedMissileMinRange = MaxVelocity;
+}
+
 // Called when the game starts or when spawned
 void AMissile::BeginPlay()
 {
@@ -149,12 +167,12 @@ void AMissile::Homing(float DeltaTime) {
 		// calculate the new forward vector of the missile by taking the distance to the target into consideration 
 		// (sqrt of homing strength so that the transition is not linear)
 		DirectionToTarget = (CurrentTargetLocation + ((PredictedTargetLocation - CurrentTargetLocation) * FMath::Sqrt(AdvancedHomingStrength))) - GetActorLocation();
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Green, "advanced Homing");
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Green, "advanced Homing");
 	}
 	else {
 		// normal homing
 		DirectionToTarget = (CurrentTargetLocation - GetActorLocation());
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Red, "normal Homing");
+		//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::Red, "normal Homing");
 	}
 	
 	DirectionToTarget.Normalize();                            // normalize the direction vector
@@ -162,7 +180,7 @@ void AMissile::Homing(float DeltaTime) {
 	// calculate the angle the missile will turn (limited by the max turnspeed [deg/s] )
 	AngleToTarget = FMath::Clamp(FMath::RadiansToDegrees(FMath::Acos(DirectionToTarget | GetActorForwardVector())), 0.0f, Turnrate * DeltaTime);
 	// debug
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "Turnrate [deg/s] = " + FString::FromInt(AngleToTarget / DeltaTime));
+	//if (GEngine) GEngine->AddOnScreenDebugMessage(-1, DeltaTime/*seconds*/, FColor::White, "Turnrate [deg/s] = " + FString::FromInt(AngleToTarget / DeltaTime));
 	
 	// rotation axis for turning the missile towards the target
 	RotationAxisForTurningToTarget = GetActorForwardVector() ^ DirectionToTarget;

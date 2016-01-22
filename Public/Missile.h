@@ -21,6 +21,13 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaSeconds) override;
 
+	// called in editor for calcuation of missing values with dependencies
+	void PostInitProperties();
+	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+
+
+
+
 	/**	 return current lifetime of the missile in seconds*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Missile")
 		float GetMissileLifetime();
